@@ -1,6 +1,6 @@
 #! /bin/bash
 
-echo "Timmy's Arch Installer"
+echo "Timmy's Arch Installer" && sleep 1
 
 # Figure out if we are running on a Legacy or UEFI system
 echo "1) UEFI System 	2) Legacy System"
@@ -30,12 +30,16 @@ then
 	# fdisk formatting
 	(
 	echo g;
+	echo w;
+	echo q
+	) } fdisk /dev/sda
+	
+	(
 	echo n;
 	echo "";
 	echo "";
 	echo +512M;
 	echo t;
-	echo 1;
 	echo 1;
 	echo n;
 	echo "";
@@ -45,6 +49,8 @@ then
 	echo "";
 	echo "";
 	echo ""
+	echo w;
+	echo q
 	) | fdisk /dev/sda
 
 	# actually format the partitions afterwards...
@@ -53,7 +59,7 @@ then
 	mkfs.ext4 /dev/sda3
 
 	# mount partitions
-	echo "Mounting partitions..."
+	echo "Mounting partitions..." && sleep 1
 	mount /dev/sda2 /mnt
 	mkdir /mnt/home
 	mount /dev/sda3 /mnt/home
@@ -72,11 +78,11 @@ echo "Downloading needed dependencies..."
 pacstrap - /mnt base linux linux-firmware sudo nano git
 
 # generate file-system table
-genfstab -U -p /mnt >> /mnt/etc/fstab
+genfstab -U -p /mnt >> /mnt/etc/fstab && sleep 1
 echo "Generated file-system table..."
 
 # post install 
-echo "Fetching post-install script and chrooting..."
+echo "Fetching post-install script and chrooting..." && sleep 1
 cp arch-post.sh /mnt/root/arch-post.sh
 arch-chroot /mnt "/bin/bash" "/root/arch-post.sh"
 
