@@ -32,7 +32,7 @@ then
 	echo g;
 	echo w;
 	echo q
-	) } fdisk /dev/sda
+	) | fdisk /dev/sda
 	
 	(
 	echo n;
