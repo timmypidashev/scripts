@@ -75,7 +75,7 @@ fi
 
 # download linux firmware and important modules
 echo "Downloading needed dependencies..."
-pacstrap - /mnt base linux linux-firmware sudo nano git
+pacstrap -i /mnt base linux linux-firmware sudo nano git
 
 # generate file-system table
 genfstab -U -p /mnt >> /mnt/etc/fstab && sleep 1
