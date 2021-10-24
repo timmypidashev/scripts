@@ -63,8 +63,10 @@ then
 	mount /dev/sda2 /mnt
 	mkdir /mnt/home
 	mount /dev/sda3 /mnt/home
+	 
+	lsblk 
 	
-	echo "Disk-related stuff complete. phew..."
+	echo "Disk-related stuff complete. phew..." && sleep 1
 fi
 	
 # EFI format
