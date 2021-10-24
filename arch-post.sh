@@ -29,7 +29,8 @@ echo "Set your root password please."
 passwd
 
 # Bootloader installation
-read -r -p "Sorry, computer's sometimes forget stuff too. What kind of system is this again? " sys
+echo "Sorry, computer's sometimes forget stuff too. What kind of system is this again?"
+read -r -p "1) UEFI System	2) LEGACY System" sys
 if [ $sys -eq 1 ] 
 then
 	# install grub and the boot manager
