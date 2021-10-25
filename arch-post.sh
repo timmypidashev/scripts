@@ -24,7 +24,7 @@ echo "installing NetworkManager..." && sleep 1
 pacman -S --noconfirm networkmanager
 systemctl enable NetworkManager
 
-# change password | may also be broken first time writing :(
+# change password
 echo "Set your root password please."
 passwd
 
