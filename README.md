@@ -1,2 +1,2 @@
 # scripts
-A collection of shell scripts :)
+A collection of handy shell scripts :)
