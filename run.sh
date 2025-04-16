@@ -12,7 +12,7 @@ while [ $# -gt 0 ]; do
       shift 2
       ;;
     --help|-h)
-      echo "Usage: curl -fsSL https://timmypidashev.dev/scripts/run | sh -s -- [OPTIONS]"
+      echo "Usage: curl -fsSL https://timmypidashev.dev/scripts/run.sh | sh -s -- [OPTIONS]"
       echo ""
       echo "Options:"
       echo "  -t, --type TYPE    Specify which script to run"
@@ -33,10 +33,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Function to download a script
+# Function to download a single script/file
 download_script() {
   script_path="$1"
-  output_path="$TEMP_DIR/$script_path"
+  output_path="$TEMP_DIR/$1"
   
   # Create directory if needed
   mkdir -p "$(dirname "$output_path")"
@@ -44,14 +44,51 @@ download_script() {
   # Download the script
   echo "Downloading $script_path..."
   curl -fsSL "$BASE_URL/$script_path" -o "$output_path"
-  chmod +x "$output_path"
+  
+  # Make executable if it's a script
+  if echo "$script_path" | grep -q "\.\(sh\|bash\|pl\|py\)$"; then
+    chmod +x "$output_path"
+  fi
+  
+  echo "$output_path"
 }
 
-# Download common utilities first
-#download_script "utils/common"
+# Function to download a directory listing
+get_directory_listing() {
+  dir_path="$1"
+  echo "Getting file listing for $dir_path..."
+  
+  # Use curl to fetch directory listing (this assumes your web server has directory listing enabled)
+  # This is a simple approach that may need customization based on your web server
+  listing=$(curl -s "$BASE_URL/$dir_path/" | grep -o 'href="[^"]*"' | cut -d'"' -f2)
+  
+  echo "$listing"
+}
 
-# Source common utilities
-#. "$TEMP_DIR/utils/common"
+# Function to download an entire directory structure
+download_directory() {
+  dir_path="$1"
+  output_dir="$TEMP_DIR/$dir_path"
+  
+  echo "Downloading directory: $dir_path"
+  mkdir -p "$output_dir"
+  
+  # Option 1: If you have a manifest.txt file that lists all files in the directory
+  if curl -s -f "$BASE_URL/$dir_path/manifest.txt" -o "$output_dir/manifest.txt"; then
+    echo "Found manifest.txt, using it to download files..."
+    while read -r file; do
+      # Skip empty lines and comments
+      [ -z "$file" ] || [ "${file#\#}" != "$file" ] && continue
+      download_script "$dir_path/$file"
+    done < "$output_dir/manifest.txt"
+  
+  fi
+  
+  # Make all shell scripts executable
+  find "$output_dir" -name "*.sh" -exec chmod +x {} \;
+  
+  echo "$output_dir"
+}
 
 # Interactive menu if no script type was specified
 if [ -z "$SCRIPT_TYPE" ]; then
@@ -87,8 +124,22 @@ fi
 # Run the requested script type
 case "$SCRIPT_TYPE" in
   coreboot-t440p)
-    download_script "scripts/coreboot"
-    "$TEMP_DIR/scripts/coreboot" "$@"
+    # Download the entire directory structure
+    script_dir=$(download_directory "scripts/coreboot-t440p")
+    
+    # Run the main script if it exists
+    if [ -f "$script_dir/main.sh" ]; then
+      "$script_dir/main.sh" "$@"
+    else
+      # Try to find any executable script
+      main_script=$(find "$script_dir" -name "*.sh" -executable | head -1)
+      if [ -n "$main_script" ]; then
+        "$main_script" "$@"
+      else
+        echo "Error: No executable scripts found in $script_dir"
+        exit 1
+      fi
+    fi
     ;;
   *)
     echo "Unknown script type: $SCRIPT_TYPE"

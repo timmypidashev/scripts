@@ -1,0 +1,22 @@
+# Main scripts
+main.sh
+utils.sh
+config.sh
+system.sh
+
+# Step scripts
+steps/attach_ch341a.sh
+steps/extract_bios.sh
+steps/backup_bios.sh
+steps/combine_bios.sh
+steps/clone_coreboot.sh
+steps/build_ifdtool.sh
+steps/build_cbfstool.tsh
+steps/build_peppy.sh
+steps/configure.sh
+steps/build_bios.sh
+steps/flash_bios.sh
+steps/update_bios.sh
+steps/revert_bios.sh
+
+# Resources
