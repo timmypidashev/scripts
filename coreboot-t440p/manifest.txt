@@ -11,7 +11,7 @@ steps/backup_bios.sh
 steps/combine_bios.sh
 steps/clone_coreboot.sh
 steps/build_ifdtool.sh
-steps/build_cbfstool.tsh
+steps/build_cbfstool.sh
 steps/build_peppy.sh
 steps/configure.sh
 steps/build_bios.sh

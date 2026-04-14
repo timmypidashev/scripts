@@ -42,14 +42,14 @@ download_script() {
   mkdir -p "$(dirname "$output_path")"
   
   # Download the script
-  echo "Downloading $script_path..."
+  echo "Downloading $script_path..." >&2
   curl -fsSL "$BASE_URL/$script_path" -o "$output_path"
-  
+
   # Make executable if it's a script
   if echo "$script_path" | grep -q "\.\(sh\|bash\|pl\|py\)$"; then
     chmod +x "$output_path"
   fi
-  
+
   echo "$output_path"
 }
 
@@ -70,12 +70,12 @@ download_directory() {
   dir_path="$1"
   output_dir="$TEMP_DIR/$dir_path"
   
-  echo "Downloading directory: $dir_path"
+  echo "Downloading directory: $dir_path" >&2
   mkdir -p "$output_dir"
-  
+
   # Option 1: If you have a manifest.txt file that lists all files in the directory
   if curl -s -f "$BASE_URL/$dir_path/manifest.txt" -o "$output_dir/manifest.txt"; then
-    echo "Found manifest.txt, using it to download files..."
+    echo "Found manifest.txt, using it to download files..." >&2
     while read -r file; do
       # Skip empty lines and comments
       [ -z "$file" ] || [ "${file#\#}" != "$file" ] && continue
@@ -125,14 +125,14 @@ fi
 case "$SCRIPT_TYPE" in
   coreboot-t440p)
     # Download the entire directory structure
-    script_dir=$(download_directory "scripts/coreboot-t440p")
-    
+    script_dir=$(download_directory "coreboot-t440p")
+
     # Run the main script if it exists
     if [ -f "$script_dir/main.sh" ]; then
       "$script_dir/main.sh" "$@"
     else
-      # Try to find any executable script
-      main_script=$(find "$script_dir" -name "*.sh" -executable | head -1)
+      # Try to find any shell script
+      main_script=$(find "$script_dir" -name "*.sh" -perm +111 | head -1)
       if [ -n "$main_script" ]; then
         "$main_script" "$@"
       else
