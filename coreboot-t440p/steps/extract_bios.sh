@@ -46,15 +46,13 @@ step_extract_bios() {
   info "Each chip is read twice so we can diff the results and catch flaky reads."
   echo ""
 
-  # Show reference image for chip locations
-  show_image "eeprom_chips_location.png" "Reference: EEPROM chip locations on T440p mainboard"
-  echo ""
-
   cd "$WORK_DIR" || return 1
 
   # --- 4MB chip (do first: smaller = faster iteration on setup) ---
   echo ""
-  info "Clip the CH341A onto the ${BOLD}4MB (top)${NC} chip."
+  show_image "eeprom_chip_4mb.webp" "Reference: 4MB (top) chip location on T440p"
+  echo ""
+  info "Clip the CH341A onto the ${BOLD}4MB (top)${NC} chip shown above."
   info "Align the red ribbon wire with the dot/notch on the chip (pin 1)."
   prompt_continue
 
@@ -64,7 +62,9 @@ step_extract_bios() {
 
   # --- 8MB chip ---
   echo ""
-  info "Now move the clip to the ${BOLD}8MB (bottom)${NC} chip."
+  show_image "eeprom_chip_8mb.webp" "Reference: 8MB (bottom) chip location on T440p"
+  echo ""
+  info "Now move the clip to the ${BOLD}8MB (bottom)${NC} chip shown above."
   info "Re-check pin 1 alignment before pressing down."
   prompt_continue
 

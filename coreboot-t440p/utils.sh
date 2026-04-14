@@ -113,9 +113,36 @@ _render_image() {
   return 1
 }
 
+# Transcode a webp file to png next to it. Echoes the png path on success.
+_webp_to_png() {
+  _webp="$1"
+  _png="${_webp%.webp}.png"
+
+  [ -f "$_png" ] && { printf '%s' "$_png"; return 0; }
+
+  if check_command dwebp; then
+    dwebp "$_webp" -o "$_png" >/dev/null 2>&1 && {
+      printf '%s' "$_png"; return 0;
+    }
+  fi
+  if check_command magick; then
+    magick "$_webp" "$_png" >/dev/null 2>&1 && {
+      printf '%s' "$_png"; return 0;
+    }
+  fi
+  if check_command convert; then
+    convert "$_webp" "$_png" >/dev/null 2>&1 && {
+      printf '%s' "$_png"; return 0;
+    }
+  fi
+
+  return 1
+}
+
 # show_image <filename> [caption]
 #   Downloads $IMAGE_BASE_URL/<filename> into $WORK_DIR/.images/,
 #   renders inline if possible, otherwise prints the URL.
+#   If the image is webp and the renderer can't decode it, transcodes to png.
 show_image() {
   _name="$1"
   _caption="$2"
@@ -134,15 +161,29 @@ show_image() {
     fi
   fi
 
+  # First attempt: render the file as-is.
   if _render_image "$_local"; then
     [ -n "$_caption" ] && printf "  ${DIM}%s${NC}\n" "$_caption"
     return 0
   fi
 
-  # No renderer available
+  # Fallback: if webp, try to transcode to png and re-render.
+  case "$_name" in
+    *.webp)
+      _png=$(_webp_to_png "$_local")
+      if [ -n "$_png" ] && _render_image "$_png"; then
+        [ -n "$_caption" ] && printf "  ${DIM}%s${NC}\n" "$_caption"
+        return 0
+      fi
+      ;;
+  esac
+
+  # No renderer / transcode available — degrade to URL.
   info "Reference image: $_url"
   if ! check_command chafa; then
-    info "(Install 'chafa' for inline image previews: sudo pacman -S chafa)"
+    info "(Install 'chafa' for inline image previews)"
+  elif case "$_name" in *.webp) true ;; *) false ;; esac; then
+    info "(Install 'libwebp' (dwebp) or 'imagemagick' to preview webp inline)"
   fi
   [ -n "$_caption" ] && info "$_caption"
 }

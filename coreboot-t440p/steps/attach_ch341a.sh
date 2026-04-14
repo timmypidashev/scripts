@@ -21,7 +21,7 @@ step_attach_ch341a() {
   echo ""
 
   # Show reference image (cached locally, rendered inline if possible)
-  show_image "spi_flasher_assembly.png" "Reference: CH341A + SOIC-8 clip assembly"
+  show_image "spi_flasher_assembly.webp" "Reference: CH341A + SOIC-8 clip assembly"
   echo ""
 
   prompt_continue
