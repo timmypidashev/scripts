@@ -6,6 +6,18 @@ step_combine_bios() {
 
   cd "$WORK_DIR" || return 1
 
+  # Short-circuit if the combined ROM already exists at the right size.
+  if [ -f t440p-original.rom ]; then
+    _existing=$(wc -c < t440p-original.rom)
+    if [ "$_existing" -eq "$SIZE_12MB" ]; then
+      info "Existing 12MB ROM found: $WORK_DIR/t440p-original.rom"
+      if prompt_yes_default "Use the existing combined ROM?"; then
+        success "Using existing t440p-original.rom."
+        return 0
+      fi
+    fi
+  fi
+
   info "Combining 8MB (bottom) + 4MB (top) into a single 12MB ROM..."
   run_cmd "cat 8mb_backup1.bin 4mb_backup1.bin > t440p-original.rom" || return 1
 

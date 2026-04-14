@@ -61,8 +61,20 @@ run_step() {
 
 # --- Main flow ---
 
+# Validate a step number (1-12). Coerces invalid input to 1.
+_sanitize_step() {
+  case "$1" in
+    ''|*[!0-9]*) echo 1; return ;;
+  esac
+  if [ "$1" -lt 1 ] || [ "$1" -gt 12 ]; then
+    echo 1
+  else
+    echo "$1"
+  fi
+}
+
 run_full_install() {
-  _start="${1:-1}"
+  _start=$(_sanitize_step "${1:-1}")
 
   [ "$_start" -le 1 ]  && run_step 1  "Install Dependencies"          install_dependencies
   [ "$_start" -le 2 ]  && run_step 2  "Connect CH341A Programmer"     step_attach_ch341a
@@ -85,9 +97,69 @@ run_full_install() {
   printf "${NC}\n"
 }
 
+# --- CLI ---
+
+print_usage() {
+  cat <<USAGE
+Usage: $(basename "$0") [OPTIONS]
+
+Options:
+  -s, --start N        Skip interactive menu; run full install from step N.
+                       Useful when BIOS is already extracted / blobs ready.
+  -u, --update         Skip menu; internal-flash coreboot (already running it).
+  -r, --revert         Skip menu; restore original BIOS.
+  -w, --work-dir PATH  Override WORK_DIR (default: \$HOME/t440p-coreboot).
+  -h, --help           Show this help.
+
+Steps (for --start):
+   1. Install dependencies       7. Build ifdtool & extract blobs
+   2. Connect CH341A programmer  8. Build cbfstool
+   3. Extract original BIOS      9. Obtain mrc.bin
+   4. Verify BIOS backups       10. Configure coreboot
+   5. Combine BIOS images       11. Build coreboot
+   6. Clone coreboot repo       12. Flash coreboot
+
+Example — skip hardware steps when backups already extracted:
+  $(basename "$0") --start 5
+USAGE
+}
+
+# Parse CLI flags. Populates CLI_MODE and CLI_START.
+CLI_MODE=""
+CLI_START=""
+_parse_cli() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -s|--start)
+        [ -z "$2" ] && { error "--start needs a step number"; exit 2; }
+        CLI_MODE="start"
+        CLI_START=$(_sanitize_step "$2")
+        shift 2
+        ;;
+      -u|--update) CLI_MODE="update"; shift ;;
+      -r|--revert) CLI_MODE="revert"; shift ;;
+      -w|--work-dir)
+        [ -z "$2" ] && { error "--work-dir needs a path"; exit 2; }
+        WORK_DIR="$2"
+        COREBOOT_DIR="$WORK_DIR/coreboot"
+        BLOB_IFD="$WORK_DIR/ifd.bin"
+        BLOB_ME="$WORK_DIR/me.bin"
+        BLOB_GBE="$WORK_DIR/gbe.bin"
+        BLOB_MRC="$WORK_DIR/mrc.bin"
+        ORIGINAL_ROM="$WORK_DIR/t440p-original.rom"
+        shift 2
+        ;;
+      -h|--help) print_usage; exit 0 ;;
+      *) error "Unknown flag: $1"; print_usage; exit 2 ;;
+    esac
+  done
+}
+
 # --- Entry point ---
 
 main() {
+  _parse_cli "$@"
+
   show_banner
   detect_distro
 
@@ -97,6 +169,13 @@ main() {
   info "Working directory: $WORK_DIR"
   echo ""
 
+  # Non-interactive modes (from CLI flags) — skip the menu entirely.
+  case "$CLI_MODE" in
+    start)  run_full_install "$CLI_START"; return ;;
+    update) step_update_bios; return ;;
+    revert) step_revert_bios; return ;;
+  esac
+
   echo "  What would you like to do?"
   echo ""
   echo "  1) Full install        - Run all steps from the beginning"
@@ -104,6 +183,8 @@ main() {
   echo "  3) Update coreboot     - Internal flash (already running coreboot)"
   echo "  4) Revert to original  - Restore original BIOS"
   echo "  5) Quit"
+  echo ""
+  info "Tip: pass --start N / --update / --revert to skip this menu."
   echo ""
 
   printf "${CYAN}Choice [1-5]:${NC} "
@@ -117,7 +198,7 @@ main() {
       echo ""
       echo "  Steps:"
       echo "   1. Install dependencies       7. Build ifdtool & extract blobs"
-      echo "   2. Verify CH341A programmer   8. Build cbfstool"
+      echo "   2. Connect CH341A programmer  8. Build cbfstool"
       echo "   3. Extract original BIOS      9. Obtain mrc.bin"
       echo "   4. Verify BIOS backups       10. Configure coreboot"
       echo "   5. Combine BIOS images       11. Build coreboot"

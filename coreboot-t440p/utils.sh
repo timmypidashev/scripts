@@ -52,9 +52,11 @@ prompt_yes_default() {
   esac
 }
 
-# Prompt for a value with a default
+# Prompt for a value with a default.
+# The prompt goes to stderr so callers can capture ONLY the chosen value
+# via command substitution: VAL=$(prompt_value "Label" "default").
 prompt_value() {
-  printf "${CYAN}%s [%s]:${NC} " "$1" "$2"
+  printf "${CYAN}%s [%s]:${NC} " "$1" "$2" >&2
   read -r _response
   if [ -z "$_response" ]; then
     echo "$2"

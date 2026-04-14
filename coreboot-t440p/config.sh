@@ -5,8 +5,12 @@
 WORK_DIR="${WORK_DIR:-$HOME/t440p-coreboot}"
 COREBOOT_DIR="$WORK_DIR/coreboot"
 
-# The coreboot commit known to work with this guide
-COREBOOT_COMMIT="e1e762716cf925c621d58163133ed1c3e006a903"
+# Pinned coreboot release tag.
+# Pinning a tag (not a SHA) keeps the guide reproducible AND lets us
+# ride toolchain fixes that land in new releases. Bumped from the old
+# 2024-era commit e1e762716c after GCC 15 started failing -Werror on
+# unterminated char[] initializers in src/commonlib/include/.../loglevel.h.
+COREBOOT_COMMIT="26.03"
 
 # Blob paths (populated after extraction)
 BLOB_IFD="$WORK_DIR/ifd.bin"

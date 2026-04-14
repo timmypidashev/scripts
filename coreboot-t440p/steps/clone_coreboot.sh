@@ -12,18 +12,23 @@ step_clone_coreboot() {
       info "Using existing coreboot directory."
       cd "$COREBOOT_DIR" || return 1
 
-      _current=$(git rev-parse HEAD 2>/dev/null)
-      if [ "$_current" = "$COREBOOT_COMMIT" ]; then
-        success "Already on correct commit."
-        return 0
-      else
-        warn "Current commit ($_current) differs from expected ($COREBOOT_COMMIT)."
-        if prompt_yes_no "Checkout the correct commit?"; then
-          run_cmd "git checkout $COREBOOT_COMMIT" || return 1
-          run_cmd "git submodule update --init --checkout" || return 1
-        fi
+      # Resolve the target ref (may be a tag or a SHA) to a SHA for comparison.
+      run_cmd "git fetch --tags origin" || return 1
+      _target_sha=$(git rev-parse --verify "$COREBOOT_COMMIT^{commit}" 2>/dev/null)
+      _current_sha=$(git rev-parse HEAD 2>/dev/null)
+
+      if [ -n "$_target_sha" ] && [ "$_current_sha" = "$_target_sha" ]; then
+        success "Already on $COREBOOT_COMMIT."
         return 0
       fi
+
+      warn "Current HEAD ($_current_sha) differs from target ($COREBOOT_COMMIT)."
+      if prompt_yes_no "Checkout $COREBOOT_COMMIT?"; then
+        run_cmd "git checkout $COREBOOT_COMMIT" || return 1
+        run_cmd "git submodule update --init --checkout" || return 1
+        success "Checked out $COREBOOT_COMMIT."
+      fi
+      return 0
     fi
   fi
 
@@ -32,11 +37,14 @@ step_clone_coreboot() {
 
   cd "$COREBOOT_DIR" || return 1
 
-  info "Checking out commit: $COREBOOT_COMMIT"
+  info "Fetching tags..."
+  run_cmd "git fetch --tags origin" || return 1
+
+  info "Checking out: $COREBOOT_COMMIT"
   run_cmd "git checkout $COREBOOT_COMMIT" || return 1
 
   info "Initializing submodules..."
   run_cmd "git submodule update --init --checkout" || return 1
 
-  success "Coreboot repository ready."
+  success "Coreboot repository ready on $COREBOOT_COMMIT."
 }

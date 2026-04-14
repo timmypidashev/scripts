@@ -134,14 +134,31 @@ _read_with_retry() {
 step_extract_bios() {
   section "Extract Original BIOS"
 
+  cd "$WORK_DIR" || return 1
+
+  # Short-circuit: if all four backups already exist and are the right size,
+  # assume the user already pulled them off the board and offer to skip.
+  if [ -f 4mb_backup1.bin ] && [ -f 4mb_backup2.bin ] \
+     && [ -f 8mb_backup1.bin ] && [ -f 8mb_backup2.bin ]; then
+    _s1=$(wc -c < 4mb_backup1.bin)
+    _s2=$(wc -c < 8mb_backup1.bin)
+    if [ "$_s1" -eq "$SIZE_4MB" ] && [ "$_s2" -eq "$SIZE_8MB" ]; then
+      info "Existing backups found in $WORK_DIR:"
+      echo "    4mb_backup1.bin, 4mb_backup2.bin, 8mb_backup1.bin, 8mb_backup2.bin"
+      echo ""
+      if prompt_yes_default "Skip re-reading the chips and use the existing backups?"; then
+        success "Using existing backups. Skipping extraction."
+        return 0
+      fi
+    fi
+  fi
+
   info "The T440p has two EEPROM chips beside the SODIMM slots:"
   echo "  - 4MB (top)    — smaller SOIC-8, farther from CPU"
   echo "  - 8MB (bottom) — larger SOIC-8, closer to CPU (holds ME firmware)"
   echo ""
   info "Each chip is read twice so we can diff the results and catch flaky reads."
   echo ""
-
-  cd "$WORK_DIR" || return 1
 
   # --- 4MB chip (do first: smaller = faster iteration on setup) ---
   echo ""
