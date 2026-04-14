@@ -49,20 +49,18 @@ download_script() {
   if echo "$script_path" | grep -q "\.\(sh\|bash\|pl\|py\)$"; then
     chmod +x "$output_path"
   fi
-
-  echo "$output_path"
 }
 
 # Function to download a directory listing
 get_directory_listing() {
   dir_path="$1"
-  echo "Getting file listing for $dir_path..."
+  echo "Getting file listing for $dir_path..." >&2
   
   # Use curl to fetch directory listing (this assumes your web server has directory listing enabled)
   # This is a simple approach that may need customization based on your web server
   listing=$(curl -s "$BASE_URL/$dir_path/" | grep -o 'href="[^"]*"' | cut -d'"' -f2)
   
-  echo "$listing"
+  echo "$listing" >&2
 }
 
 # Function to download an entire directory structure
@@ -86,8 +84,8 @@ download_directory() {
   
   # Make all shell scripts executable
   find "$output_dir" -name "*.sh" -exec chmod +x {} \;
-  
-  echo "$output_dir"
+
+  printf '%s\n' "$output_dir"
 }
 
 # Interactive menu if no script type was specified
@@ -129,12 +127,20 @@ case "$SCRIPT_TYPE" in
 
     # Run the main script if it exists
     if [ -f "$script_dir/main.sh" ]; then
-      "$script_dir/main.sh" "$@"
+      if [ -t 0 ]; then
+        "$script_dir/main.sh" "$@"
+      else
+        "$script_dir/main.sh" "$@" < /dev/tty
+      fi
     else
       # Try to find any shell script
-      main_script=$(find "$script_dir" -name "*.sh" -perm +111 | head -1)
+      main_script=$(find "$script_dir" -name "*.sh" -perm -111 | head -1)
       if [ -n "$main_script" ]; then
-        "$main_script" "$@"
+        if [ -t 0 ]; then
+          "$main_script" "$@"
+        else
+          "$main_script" "$@" < /dev/tty
+        fi
       else
         echo "Error: No executable scripts found in $script_dir"
         exit 1

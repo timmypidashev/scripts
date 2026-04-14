@@ -30,5 +30,10 @@ step_build_bios() {
   fi
 
   _size=$(wc -c < "$COREBOOT_DIR/build/coreboot.rom")
+  if [ "$_size" -ne "$SIZE_12MB" ]; then
+    error "coreboot.rom size is $_size bytes, expected $SIZE_12MB (12MB)."
+    error "Flashing a wrong-sized ROM will brick the board. Check your config."
+    return 1
+  fi
   success "Build complete: $COREBOOT_DIR/build/coreboot.rom ($_size bytes)"
 }

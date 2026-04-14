@@ -38,6 +38,13 @@ _revert_external() {
   run_cmd "dd if=t440p-original.rom of=bottom.rom bs=1M count=8" || return 1
   run_cmd "dd if=t440p-original.rom of=top.rom bs=1M skip=8" || return 1
 
+  _b=$(wc -c < bottom.rom)
+  _t=$(wc -c < top.rom)
+  if [ "$_b" -ne "$SIZE_8MB" ] || [ "$_t" -ne "$SIZE_4MB" ]; then
+    error "Split sizes wrong (bottom=$_b, top=$_t). Aborting."
+    return 1
+  fi
+
   # Flash 4MB (top) chip
   info "Attach the programmer to the 4MB (top) chip."
   prompt_continue

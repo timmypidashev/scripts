@@ -23,6 +23,17 @@ step_configure() {
     return 1
   fi
 
+  # Warn before overwriting existing .config
+  if [ -f "$COREBOOT_DIR/.config" ]; then
+    echo ""
+    warn "An existing .config was found in $COREBOOT_DIR."
+    if ! prompt_yes_no "Overwrite it?"; then
+      info "Keeping existing .config. Opening nconfig for review..."
+      make nconfig
+      return $?
+    fi
+  fi
+
   echo ""
   info "Choose a payload for your coreboot build:"
   echo ""
@@ -46,10 +57,19 @@ step_configure() {
   done
 
   _has_dgpu="n"
+  _dgpu_vbios=""
   if [ "$_payload" != "custom" ]; then
     echo ""
     if prompt_yes_no "Does your T440p have the GT730M dGPU?"; then
       _has_dgpu="y"
+      echo ""
+      info "dGPU support needs a VGA option ROM (VBIOS) for the GT730M."
+      info "Extract it from your original ROM, dump from live Windows, or obtain separately."
+      _dgpu_vbios=$(prompt_value "Path to GT730M VBIOS file (leave empty to skip auto-set)" "")
+      if [ -n "$_dgpu_vbios" ] && [ ! -f "$_dgpu_vbios" ]; then
+        warn "File not found: $_dgpu_vbios. Will set flags only; fill path in nconfig."
+        _dgpu_vbios=""
+      fi
     fi
   fi
 
@@ -75,7 +95,7 @@ step_configure() {
   cat > .config << COREBOOT_CONFIG
 # Mainboard
 CONFIG_VENDOR_LENOVO=y
-CONFIG_BOARD_LENOVO_HASWELL=y
+CONFIG_BOARD_LENOVO_THINKPAD_T440P=y
 
 # Firmware blobs
 CONFIG_HAVE_IFD_BIN=y
@@ -98,7 +118,6 @@ CONFIG_PAYLOAD_GRUB2=y
 CONFIG_GRUB2_INCLUDE_RUNTIME_CONFIG_FILE=y
 
 # Secondary payloads
-CONFIG_PAYLOAD_FILE_IS_GRUB2=y
 CONFIG_MEMTEST_SECONDARY_PAYLOAD=y
 CONFIG_NVRAMCUI_SECONDARY_PAYLOAD=y
 CONFIG_COREINFO_SECONDARY_PAYLOAD=y
@@ -115,21 +134,26 @@ SEABIOS_CONFIG
     edk2)
       cat >> .config << 'EDK2_CONFIG'
 
-# Payload
-CONFIG_PAYLOAD_EDK2=y
+# Payload (tianocore/edk2)
+CONFIG_PAYLOAD_TIANOCORE=y
 EDK2_CONFIG
       ;;
   esac
 
-  # dGPU option ROM
+  # dGPU option ROM (GT730M)
   if [ "$_has_dgpu" = "y" ]; then
-    cat >> .config << 'DGPU_CONFIG'
+    cat >> .config << DGPU_CONFIG
 
 # dGPU (GT730M) VGA option ROM
-CONFIG_VGA_BIOS=y
 CONFIG_VGA_BIOS_DGPU=y
+CONFIG_VGA_BIOS_DGPU_FILE="$_dgpu_vbios"
+CONFIG_VGA_BIOS_DGPU_ID="10de,1292"
 DGPU_CONFIG
-    info "dGPU option ROM support enabled."
+    if [ -z "$_dgpu_vbios" ]; then
+      warn "dGPU VBIOS path empty — set CONFIG_VGA_BIOS_DGPU_FILE in nconfig before building."
+    else
+      info "dGPU option ROM configured: $_dgpu_vbios"
+    fi
   fi
 
   # Fill in remaining defaults

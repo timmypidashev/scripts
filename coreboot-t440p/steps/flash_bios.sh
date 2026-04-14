@@ -18,8 +18,13 @@ step_flash_bios() {
 
   _bottom_size=$(wc -c < bottom.rom)
   _top_size=$(wc -c < top.rom)
-  info "bottom.rom: $_bottom_size bytes"
-  info "top.rom: $_top_size bytes"
+  info "bottom.rom: $_bottom_size bytes (expected $SIZE_8MB)"
+  info "top.rom: $_top_size bytes (expected $SIZE_4MB)"
+
+  if [ "$_bottom_size" -ne "$SIZE_8MB" ] || [ "$_top_size" -ne "$SIZE_4MB" ]; then
+    error "Split ROM sizes wrong. Refusing to flash."
+    return 1
+  fi
 
   echo ""
   warn "You are about to flash coreboot onto your T440p."
