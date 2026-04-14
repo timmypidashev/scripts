@@ -79,6 +79,74 @@ run_cmd() {
   return $_status
 }
 
+# --- Inline image rendering ---
+
+# Base URL for blog assets (override via env if needed).
+IMAGE_BASE_URL="${IMAGE_BASE_URL:-https://timmypidashev.dev/blog/thinkpad-t440p-coreboot-guide}"
+
+# Attempt to render $1 inline. Returns 0 on success, 1 if no supported backend.
+_render_image() {
+  _path="$1"
+
+  # chafa handles kitty / iterm2 / sixel / ANSI fallback automatically
+  if check_command chafa; then
+    chafa --size=60x25 "$_path" 2>/dev/null && return 0
+  fi
+
+  # Native kitty icat
+  if [ -n "$KITTY_WINDOW_ID" ] && check_command kitty; then
+    kitty +kitten icat --align=left "$_path" 2>/dev/null && return 0
+  fi
+
+  # iTerm2 / WezTerm inline image protocol
+  case "$TERM_PROGRAM" in
+    iTerm.app|WezTerm)
+      if check_command base64; then
+        _b64=$(base64 < "$_path" | tr -d '\n')
+        _sz=$(wc -c < "$_path")
+        printf '\033]1337;File=inline=1;size=%s:%s\a\n' "$_sz" "$_b64"
+        return 0
+      fi
+      ;;
+  esac
+
+  return 1
+}
+
+# show_image <filename> [caption]
+#   Downloads $IMAGE_BASE_URL/<filename> into $WORK_DIR/.images/,
+#   renders inline if possible, otherwise prints the URL.
+show_image() {
+  _name="$1"
+  _caption="$2"
+  _url="$IMAGE_BASE_URL/$_name"
+  _cache="${WORK_DIR:-/tmp}/.images"
+  _local="$_cache/$_name"
+
+  mkdir -p "$_cache"
+
+  if [ ! -f "$_local" ]; then
+    if ! curl -fsSL "$_url" -o "$_local" 2>/dev/null; then
+      rm -f "$_local"
+      info "Reference image: $_url"
+      [ -n "$_caption" ] && info "$_caption"
+      return 1
+    fi
+  fi
+
+  if _render_image "$_local"; then
+    [ -n "$_caption" ] && printf "  ${DIM}%s${NC}\n" "$_caption"
+    return 0
+  fi
+
+  # No renderer available
+  info "Reference image: $_url"
+  if ! check_command chafa; then
+    info "(Install 'chafa' for inline image previews: sudo pacman -S chafa)"
+  fi
+  [ -n "$_caption" ] && info "$_caption"
+}
+
 # Handle step failure - ask user how to proceed
 handle_failure() {
   echo ""

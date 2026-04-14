@@ -72,7 +72,7 @@ run_full_install() {
   _start="${1:-1}"
 
   [ "$_start" -le 1 ]  && run_step 1  "Install Dependencies"          install_dependencies
-  [ "$_start" -le 2 ]  && run_step 2  "Verify CH341A Programmer"      step_attach_ch341a
+  [ "$_start" -le 2 ]  && run_step 2  "Connect CH341A Programmer"     step_attach_ch341a
   [ "$_start" -le 3 ]  && run_step 3  "Extract Original BIOS"         step_extract_bios
   [ "$_start" -le 4 ]  && run_step 4  "Verify BIOS Backups"           step_backup_bios
   [ "$_start" -le 5 ]  && run_step 5  "Combine BIOS Images"           step_combine_bios
