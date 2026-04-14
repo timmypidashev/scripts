@@ -1,10 +1,17 @@
 #!/bin/sh
 # Step: Verify BIOS backup integrity (with per-chip retry)
 
-# Re-read a single chip until two reads match or user gives up
+# Re-read a single chip until two reads match or user gives up.
+# Uses the chip variant resolved during extraction (CHIP_4MB / CHIP_8MB).
 _reread_chip() {
   _label="$1"   # "4mb" or "8mb"
   _desc="$2"    # human-readable description
+  _chip="$3"    # flashrom -c chip name
+
+  if [ -z "$_chip" ]; then
+    error "No chip variant recorded for $_desc. Re-run the extract step."
+    return 1
+  fi
 
   while true; do
     warn "$_desc reads do NOT match. The chip may not be reading reliably."
@@ -17,9 +24,9 @@ _reread_chip() {
     case "$_choice" in
       1)
         info "Re-reading $_desc chip (read 1 of 2)..."
-        run_cmd "sudo flashrom --programmer ch341a_spi -r ${_label}_backup1.bin" || return 1
+        run_cmd "sudo flashrom --programmer ch341a_spi -c \"$_chip\" -r ${_label}_backup1.bin" || return 1
         info "Re-reading $_desc chip (read 2 of 2)..."
-        run_cmd "sudo flashrom --programmer ch341a_spi -r ${_label}_backup2.bin" || return 1
+        run_cmd "sudo flashrom --programmer ch341a_spi -c \"$_chip\" -r ${_label}_backup2.bin" || return 1
         if diff "${_label}_backup1.bin" "${_label}_backup2.bin" >/dev/null 2>&1; then
           success "$_desc reads now match."
           return 0
@@ -41,14 +48,14 @@ step_backup_bios() {
   if diff 4mb_backup1.bin 4mb_backup2.bin >/dev/null 2>&1; then
     success "4MB chip reads are identical."
   else
-    _reread_chip "4mb" "4MB (top)" || return 1
+    _reread_chip "4mb" "4MB (top)" "$CHIP_4MB" || return 1
   fi
 
   info "Verifying 8MB chip reads match..."
   if diff 8mb_backup1.bin 8mb_backup2.bin >/dev/null 2>&1; then
     success "8MB chip reads are identical."
   else
-    _reread_chip "8mb" "8MB (bottom)" || return 1
+    _reread_chip "8mb" "8MB (bottom)" "$CHIP_8MB" || return 1
   fi
 
   # Validate file sizes

@@ -20,6 +20,12 @@ SIZE_4MB=4194304
 SIZE_8MB=8388608
 SIZE_12MB=12582912
 
+# Resolved flashrom chip names (set at runtime by _resolve_chip).
+# Needed because some Winbond variants share a silicon ID and flashrom
+# refuses to pick one without an explicit -c <chipname>.
+CHIP_4MB="${CHIP_4MB:-}"
+CHIP_8MB="${CHIP_8MB:-}"
+
 # Detect the Linux distribution
 detect_distro() {
   if [ -f /etc/os-release ]; then

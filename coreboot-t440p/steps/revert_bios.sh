@@ -49,8 +49,11 @@ _revert_external() {
   info "Attach the programmer to the 4MB (top) chip."
   prompt_continue
 
-  info "Flashing original 4MB chip..."
-  run_cmd "sudo flashrom --programmer ch341a_spi -w top.rom" || return 1
+  if [ -z "$CHIP_4MB" ]; then
+    _resolve_chip CHIP_4MB || return 1
+  fi
+  info "Flashing original 4MB chip ($CHIP_4MB)..."
+  run_cmd "sudo flashrom --programmer ch341a_spi -c \"$CHIP_4MB\" -w top.rom" || return 1
   success "4MB chip restored."
 
   # Flash 8MB (bottom) chip
@@ -58,8 +61,11 @@ _revert_external() {
   info "Now attach the programmer to the 8MB (bottom) chip."
   prompt_continue
 
-  info "Flashing original 8MB chip..."
-  run_cmd "sudo flashrom --programmer ch341a_spi -w bottom.rom" || return 1
+  if [ -z "$CHIP_8MB" ]; then
+    _resolve_chip CHIP_8MB || return 1
+  fi
+  info "Flashing original 8MB chip ($CHIP_8MB)..."
+  run_cmd "sudo flashrom --programmer ch341a_spi -c \"$CHIP_8MB\" -w bottom.rom" || return 1
   success "8MB chip restored."
 
   echo ""
