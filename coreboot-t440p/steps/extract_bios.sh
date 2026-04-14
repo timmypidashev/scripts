@@ -17,66 +17,84 @@ _resolve_chip() {
   fi
 
   _log=$(mktemp)
-  printf "  ${DIM}\$ sudo flashrom --programmer ch341a_spi${NC}\n"
-  sudo flashrom --programmer ch341a_spi >"$_log" 2>&1
-  _st=$?
 
-  # Unambiguous success: one "Found ... chip \"NAME\"" line, exit 0.
-  if [ $_st -eq 0 ]; then
-    _chip=$(sed -nE 's/.*Found .* flash chip "([^"]+)".*/\1/p' "$_log" | head -1)
-    if [ -n "$_chip" ]; then
-      eval "$_var=\"\$_chip\""
-      info "Detected chip: $_chip"
+  while true; do
+    printf "  ${DIM}\$ sudo flashrom --programmer ch341a_spi${NC}\n"
+    sudo flashrom --programmer ch341a_spi >"$_log" 2>&1
+    _st=$?
+
+    # Unambiguous success: one "Found ... chip \"NAME\"" line, exit 0.
+    if [ $_st -eq 0 ]; then
+      _chip=$(sed -nE 's/.*Found .* flash chip "([^"]+)".*/\1/p' "$_log" | head -1)
+      if [ -n "$_chip" ]; then
+        eval "$_var=\"\$_chip\""
+        info "Detected chip: $_chip"
+        rm -f "$_log"
+        return 0
+      fi
+    fi
+
+    # Ambiguous match: flashrom lists candidates but refuses to pick.
+    if grep -q "Multiple flash chip definitions match" "$_log"; then
+      _candidates=$(sed -nE 's/.*Found .* flash chip "([^"]+)".*/\1/p' "$_log")
+      _count=$(printf '%s\n' "$_candidates" | wc -l | tr -d ' ')
+      echo ""
+      warn "Flashrom read the chip but multiple variants match the same silicon ID."
+      info "This is normal for Winbond W25Q* parts. Pick one (the newest is safe):"
+      echo ""
+      _i=1
+      for _c in $_candidates; do
+        if [ "$_i" = "$_count" ]; then
+          echo "  $_i) $_c   (default — newest)"
+        else
+          echo "  $_i) $_c"
+        fi
+        _i=$((_i+1))
+      done
+      echo ""
+
+      _picked=""
+      while [ -z "$_picked" ]; do
+        printf "${CYAN}Choice [1-%s] (Enter = %s):${NC} " "$_count" "$_count"
+        read -r _sel
+        [ -z "$_sel" ] && _sel="$_count"
+        case "$_sel" in
+          ''|*[!0-9]*) echo "Enter a number."; continue ;;
+        esac
+        if [ "$_sel" -lt 1 ] || [ "$_sel" -gt "$_count" ]; then
+          echo "Out of range."
+          continue
+        fi
+        _picked=$(printf '%s\n' "$_candidates" | sed -n "${_sel}p")
+      done
+      eval "$_var=\"\$_picked\""
+      info "Using chip definition: $_picked"
       rm -f "$_log"
       return 0
     fi
-  fi
 
-  # Ambiguous match: flashrom lists candidates but refuses to pick.
-  if grep -q "Multiple flash chip definitions match" "$_log"; then
-    _candidates=$(sed -nE 's/.*Found .* flash chip "([^"]+)".*/\1/p' "$_log")
-    _count=$(printf '%s\n' "$_candidates" | wc -l | tr -d ' ')
+    # Hard failure — no chip detected. Show output and offer re-seat retry.
     echo ""
-    warn "Flashrom read the chip but multiple variants match the same silicon ID."
-    info "This is normal for Winbond W25Q* parts. Pick one (the newest is safe):"
+    error "Chip probe failed. flashrom output:"
+    sed 's/^/    /' "$_log"
     echo ""
-    _i=1
-    for _c in $_candidates; do
-      if [ "$_i" = "$_count" ]; then
-        echo "  $_i) $_c   ${DIM}(default — newest)${NC}"
-      else
-        echo "  $_i) $_c"
-      fi
-      _i=$((_i+1))
-    done
+    warn "Most common causes:"
+    echo "    - Clip not seated flush on chip (press down gently, wiggle)"
+    echo "    - Pin 1 misaligned (red ribbon wire ↔ chip dot/notch)"
+    echo "    - Clipped onto the wrong chip (try the other one, then switch back)"
+    echo "    - Residual laptop power (remove main battery + CMOS coin cell)"
+    echo "    - Cheap SOIC-8 clips can make intermittent contact"
     echo ""
-
-    _picked=""
-    while [ -z "$_picked" ]; do
-      printf "${CYAN}Choice [1-%s] (Enter = %s):${NC} " "$_count" "$_count"
-      read -r _sel
-      [ -z "$_sel" ] && _sel="$_count"
-      case "$_sel" in
-        ''|*[!0-9]*) echo "Enter a number."; continue ;;
-      esac
-      if [ "$_sel" -lt 1 ] || [ "$_sel" -gt "$_count" ]; then
-        echo "Out of range."
-        continue
-      fi
-      _picked=$(printf '%s\n' "$_candidates" | sed -n "${_sel}p")
-    done
-    eval "$_var=\"\$_picked\""
-    info "Using chip definition: $_picked"
-    rm -f "$_log"
-    return 0
-  fi
-
-  # Real failure (no chip, clip bad, etc.) — show the log and fail.
-  echo ""
-  error "Chip probe failed. flashrom output:"
-  sed 's/^/    /' "$_log"
-  rm -f "$_log"
-  return 1
+    echo "  1) Re-seat clip and retry"
+    echo "  2) Abort"
+    echo ""
+    printf "${CYAN}Choice [1-2]:${NC} "
+    read -r _choice
+    case "$_choice" in
+      1) continue ;;
+      *) rm -f "$_log"; return 1 ;;
+    esac
+  done
 }
 
 # Read a chip with inline retry on failure.

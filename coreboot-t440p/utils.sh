@@ -12,11 +12,11 @@ BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m'
 
-# Logging
-info()    { printf "${BLUE}[*]${NC} %s\n" "$1"; }
-warn()    { printf "${YELLOW}[!]${NC} %s\n" "$1"; }
-error()   { printf "${RED}[x]${NC} %s\n" "$1"; }
-success() { printf "${GREEN}[+]${NC} %s\n" "$1"; }
+# Logging — %b interprets backslash escapes so inline ${BOLD}, ${DIM} etc. work.
+info()    { printf "${BLUE}[*]${NC} %b\n" "$1"; }
+warn()    { printf "${YELLOW}[!]${NC} %b\n" "$1"; }
+error()   { printf "${RED}[x]${NC} %b\n" "$1"; }
+success() { printf "${GREEN}[+]${NC} %b\n" "$1"; }
 
 # Print a section header
 section() {
@@ -188,20 +188,20 @@ show_image() {
   [ -n "$_caption" ] && info "$_caption"
 }
 
-# Handle step failure - ask user how to proceed
+# Handle step failure — retry or quit only.
+# Skipping is deliberately not offered: most steps (extract/flash/revert)
+# are irreversible or a skip will brick the board downstream.
 handle_failure() {
   echo ""
   error "Step failed: $1"
   echo ""
   echo "  1) Retry this step"
-  echo "  2) Skip and continue"
-  echo "  3) Quit"
+  echo "  2) Quit"
   echo ""
-  printf "${CYAN}Choice [1-3]:${NC} "
+  printf "${CYAN}Choice [1-2]:${NC} "
   read -r _choice
   case "$_choice" in
-    1) return 1 ;; # Signal retry
-    2) return 0 ;; # Signal skip
+    1) return 1 ;;   # Signal retry
     *) exit 1 ;;
   esac
 }

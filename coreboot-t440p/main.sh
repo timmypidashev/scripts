@@ -53,16 +53,9 @@ run_step() {
       return 0
     fi
 
-    # Step failed - ask what to do
+    # Step failed — prompt retry-or-quit.
+    # handle_failure exits the whole script on "quit"; otherwise loop retries.
     handle_failure "$_step_name"
-    _decision=$?
-
-    if [ $_decision -eq 0 ]; then
-      # Skip
-      warn "Skipping: $_step_name"
-      return 0
-    fi
-    # Otherwise retry (loop continues)
   done
 }
 
